@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: /app/entrypoint.sh
+    volumes:
+      - .:/app
+      - ./staticfiles:/app/staticfiles
+    env_file:
+      - .env
+    depends_on:
+      - nginx
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./staticfiles:/app/staticfiles
+
+  redis:
+    restart: unless-stopped
+    image: redis:7-alpine
+    expose:
+      - 6379
+
+      
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: celery -A config worker -l INFO
+    volumes:
+      - .:/usr/src/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - web
