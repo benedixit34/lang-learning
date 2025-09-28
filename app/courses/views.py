@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
@@ -187,7 +187,9 @@ class CourseBundleViewset(viewsets.ModelViewSet):
 
     
     def get_permissions(self):
-        if self.request.method in ["GET"]:
+        if self.action == "list":
+            self.permission.classes = [AllowAny]
+        elif self.request.method in ["GET"]:
             self.permission_classes = [IsAuthenticated]
         elif self.action =="enrol_course_bundle":
             self.permission_classes = [IsAuthenticated, CanEnroll]
