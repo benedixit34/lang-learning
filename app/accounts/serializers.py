@@ -34,11 +34,15 @@ class UserWriteSerializer(serializers.ModelSerializer):
 
 
 class InstructorReadSerializer(serializers.ModelSerializer):
-    user = UserReadSerializer()
+    email = serializers.EmailField(source="user.email", read_only=True)
+    full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Instructor
-        fields = ("user", "bio", "profile_picture", "created_at", "updated_at")
+        fields = ("email", "full_name", "profile_picture", "created_at", "updated_at")
+    
+    def get_full_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}".strip()
 
 
 class ChangePasswordSerializer(serializers.Serializer):

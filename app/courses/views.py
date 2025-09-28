@@ -70,7 +70,6 @@ class CourseViewSet(viewsets.ModelViewSet):
 
         completed_lessons = Lesson.objects.filter(id__in=completed_ids).order_by("order")
         completed_lessons = completed_lessons.select_related('course', 'section')
-
         serializer = LessonListReadSerializer(completed_lessons, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -156,14 +155,6 @@ class CourseBundleViewset(viewsets.ModelViewSet):
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
 
-    @action(detail=True, methods=['get'], url_path='courses')
-    def get_bundles_courses(self, request, uuid=None):
-        bundle = self.get_object()
-        courses = bundle.courses.all()
-        serializer = CourseReadSerializer(courses, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
     @action(detail=True, methods=['post'], url_path='enrol')
     def enrol_course_bundle(self, request, uuid=None):
         course_bundle = self.get_object()
@@ -188,7 +179,7 @@ class CourseBundleViewset(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action == "list":
-            self.permission.classes = [AllowAny]
+            self.permission_classes = [AllowAny]
         elif self.request.method in ["GET"]:
             self.permission_classes = [IsAuthenticated]
         elif self.action =="enrol_course_bundle":
