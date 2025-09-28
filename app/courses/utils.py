@@ -98,20 +98,19 @@ def lesson_permission(lesson, user):
             completion = UserLessonCompletion.objects.get(user=user, lesson=prev)
         except UserLessonCompletion.DoesNotExist:
             raise PermissionDenied(
-                f"You must complete lesson {prev.order} - {prev.title} \
-                    before accessing this one."
+                f"You must complete lesson {prev.order} - {prev.title} before accessing this one."
             )
 
         if completion.created_at:
-            deadline = completion.created_at + timedelta(days=7)
+            deadline = completion.created_at + timedelta(days=14)
             now = timezone.now()
             if now < deadline:
                 waited = timesince(completion.created_at, now)
                 remaining = timesince(now, deadline)
                 raise PermissionDenied(
-                    f"Lesson {prev.order} - {prev.title} is locked. "
-                    f"You completed it {waited} ago. "
-                    f"Please wait {remaining} more to unlock this lesson."
+                    f"Lesson {prev.order} - {prev.title} is locked. \
+                        You completed it {waited} ago. \
+                        Please wait {remaining} more to unlock this lesson."
                 )
 
     return True
