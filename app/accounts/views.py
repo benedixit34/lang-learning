@@ -7,9 +7,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from app.auth.models import Verification
-from app.courses.mixins import SubscriptionMixin
-from app.courses.models import CourseBundleChoice
-from app.courses.serializers import CourseBundleReadSerializer
+from app.courses.utils import has_subscription
+
+
 
 from .serializers import (
     ChangePasswordSerializer,
@@ -22,7 +22,7 @@ User = get_user_model()
 
 
 # Create your views here.
-class UserViewSet(SubscriptionMixin, viewsets.ModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     lookup_field = "uuid"
 
@@ -71,37 +71,15 @@ class UserViewSet(SubscriptionMixin, viewsets.ModelViewSet):
         # If validation fails, return the errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=["get"], url_path="courses/enrolled")
-    def enrolled_course_bundle(self, request, uuid=None):
-        user = self.get_object()
-        if self.check_subscription(user):
-            bundle_choices = CourseBundleChoice.objects.filter(user=user)
-            if bundle_choices.exists():
-                serialized_data = []
-                for bundle_choice in bundle_choices:
-                    serializer = CourseBundleReadSerializer(bundle_choice.course_bundle)
-                    serialized_data.append(serializer.data)
-            
-                return Response(serialized_data, status=status.HTTP_200_OK)
-            else:
-                return Response(
-                    {"details": "You are not enrolled to any course bundle!!"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        else:
-            return Response(
-                {"details": "You are not subscribed to any course bundle!!"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+
         
     @action(detail=True, methods=["get"], url_path="subscribed")
     def subscribed(self, request, uuid=None):
         user = self.get_object()
-        if self.check_subscription(user):
-            return Response({"subscribed": True}, status=status.HTTP_201_CREATED)
-        else:
-            return Response({"subscribed": False}, status=status.HTTP_400_BAD_REQUEST)
+        is_subscribed = has_subscription(user)
+        return Response({"is_subscribed": is_subscribed}, status=status.HTTP_200_OK)
 
+        
     def get_permissions(self):
         if self.request.method == "POST":
             self.permission_classes = [AllowAny]

@@ -1,56 +1,49 @@
-from django.utils import timezone
-from django.utils.timesince import timesince
-from datetime import timedelta
-from rest_framework.exceptions import PermissionDenied
-from app.courses.models import Lesson, UserLessonCompletion
-from app.courses.utils import get_user_lessons
-
-
-from datetime import timedelta
-from django.utils import timezone
-from django.utils.timesince import timesince
-from rest_framework.exceptions import PermissionDenied
-
-
 from app.accounts.models import Instructor
+from rest_framework.permissions import BasePermission
+from app.courses.utils import has_subscription, lesson_permission, get_completed_level
+from app.courses.models import SpecialCourseBundle, CourseBundleChoice
 
-def lesson_permission(lesson, user):
-    # All previous lessons in order
-    previous_lessons = Lesson.objects.filter(
-        course=lesson.course,
-        order__lt=lesson.order
-    ).order_by("order")
 
-    allowed_lessons = set(get_user_lessons(user))
+class CanAccessLesson(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return lesson_permission(lesson=obj, user=request.user)
 
-    for prev in previous_lessons:
-        if prev not in allowed_lessons:
-            raise PermissionDenied(
-                f"You do not have access to lesson {prev.order} - {prev.title}."
-            )
+
+class IsInstructor(BasePermission):
+    def has_permission(self, request, view):
+        return Instructor.objects.filter(user=request.user).exists()
+
+
+class IsSubscribed(BasePermission):
+    def has_permission(self, request, view):
+        return has_subscription(request.user)
+    
+
+class CanEnroll(BasePermission):
+
+
+    def has_permission(self, request, view):
+        user = request.user
+       
+
+        course_bundle_id = view.kwargs.get("uuid")
+        if not course_bundle_id:
+            return False
 
         try:
-            completion = UserLessonCompletion.objects.get(user=user, lesson=prev)
-        except UserLessonCompletion.DoesNotExist:
-            raise PermissionDenied(
-                f"You must complete lesson {prev.order} - {prev.title} \
-                    before accessing this one."
+            if SpecialCourseBundle.objects.filter(course_bundle__uuid=course_bundle_id).exists():
+                return True
+        except SpecialCourseBundle.DoesNotExist:
+            pass
+
+        try:
+            bundle_choice = CourseBundleChoice.objects.get(
+                user=user, course_bundle__uuid=course_bundle_id
             )
-
-        if completion.created_at:
-            deadline = completion.created_at + timedelta(days=7)
-            now = timezone.now()
-            if now < deadline:
-                waited = timesince(completion.created_at, now)
-                remaining = timesince(now, deadline)
-                raise PermissionDenied(
-                    f"Lesson {prev.order} - {prev.title} is locked. "
-                    f"You completed it {waited} ago. "
-                    f"Please wait {remaining} more to unlock this lesson."
-                )
-
-    return True
-
-
-def is_instructor(user):
-    return Instructor.objects.filter(user=user).exists()
+            
+        except CourseBundleChoice.DoesNotExist:
+            return True
+        for course in bundle_choice.course_bundle.courses.all():
+            if get_completed_level(user, course) < 100:
+                return True
+        return False

@@ -70,7 +70,7 @@ class VideoReadSerializer(serializers.ModelSerializer):
         fields = ["uuid", "name", "description", "video", "featured_image"]
 
 
-class LessonReadSerializer(serializers.ModelSerializer):
+class LessonRetrieveReadSerializer(serializers.ModelSerializer):
     video = VideoReadSerializer()
 
     class Meta:
@@ -81,6 +81,18 @@ class LessonReadSerializer(serializers.ModelSerializer):
             "description",
             "order",
             "video",
+            "created_at",
+            "updated_at",
+        ]
+
+class LessonListReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lesson
+        fields = [
+            "uuid",
+            "title",
+            "description",
+            "order",
             "created_at",
             "updated_at",
         ]
@@ -199,11 +211,6 @@ class UserCourseProgressSerializer(serializers.ModelSerializer):
         fields = ['user', 'course', 'completion_level']
 
 
-class SectionReadSerializer(serializers.ModelSerializer):
-    lessons = LessonReadSerializer(many=True)
 
-    class Meta:
-        model = Section
-        fields = ["uuid", "name", "order", "lessons"]
 
 

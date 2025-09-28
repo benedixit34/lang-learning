@@ -3,12 +3,19 @@ import cloudinary.uploader
 
 
 from app.courses.models import Lesson, CourseBundleChoice, \
-    SpecialCourseBundle, UserLessonCompletion, Course, Video
+    SpecialCourseBundle, UserLessonCompletion, Course, Video, Section
 from app.accounts.models import Subscriber
 from app.courses.stripe_payments import get_user_active_subscriptions
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import status
+
+
+from django.utils import timezone
+from django.utils.timesince import timesince
+from datetime import timedelta
+from rest_framework.exceptions import PermissionDenied
+from app.courses.models import Lesson, UserLessonCompletion
 
 
 def upload_image_to_cloudinary(image_file):
@@ -33,7 +40,7 @@ def has_subscription(user):
 
 def access_special_course(user, product_id):
     subs = get_user_active_subscriptions(user)   
-    subscribed_products = [sub.product_id for sub in subs]
+    subscribed_products = [sub['product'] for sub in subs]
     if product_id not in subscribed_products:
         raise PermissionDenied("You are not subscribed to this product")
     
@@ -42,45 +49,69 @@ def access_special_course(user, product_id):
 
 
 def get_user_lessons(user):
-    if not has_subscription(user):
-        raise PermissionDenied("You need an active subscription to access lessons.")
-
     bundle_choices = CourseBundleChoice.objects.filter(user=user).select_related("course_bundle")
     bundles = [choice.course_bundle for choice in bundle_choices]
+
     special_bundles = SpecialCourseBundle.objects.filter(course_bundle__in=bundles)
-
     for special_bundle in special_bundles:
-        access_special_course(user, special_bundle.product_id)
-
-    return Lesson.objects.filter(course__coursebundle__in=bundles).distinct()
-
-
-
-def get_user_videos(user):
-    lessons = get_user_lessons(user)
-    return Video.objects.filter(lesson__in=lessons).order_by("created_at")
+        if not access_special_course(user, special_bundle.product_id):
+            if special_bundle.course_bundle in bundles:
+                bundles.remove(special_bundle.course_bundle)
 
 
+    courses = Course.objects.filter(bundles__in=bundles).distinct()
+   
+
+    lessons = Lesson.objects.filter(course__in=courses).order_by("order").distinct()
+    return lessons
 
 
 
-def get_user_courses(user):
-    bundle_choices = CourseBundleChoice.objects.filter(user=user).values_list("course_bundle", flat=True)
-    return Course.objects.filter(coursebundle__in=bundle_choices).distinct()
 
-
-def get_enrolled_lessons(user):
-    courses = get_user_courses(user)
-    if not courses.exists():
-        raise PermissionDenied("Please select a course bundle.")
-    return Lesson.objects.filter(course__in=courses)
 
 
 def get_completed_level(user, course):
-    lessons = get_enrolled_lessons(user).filter(course=course)
+    lessons = get_user_lessons(user).filter(course=course)
     total_lessons = lessons.count()
     if total_lessons == 0:
         return 0
 
     completed = UserLessonCompletion.objects.filter(user=user, lesson__in=lessons).count()
     return round((completed / total_lessons) * 100, 2)
+
+
+def lesson_permission(lesson, user):
+    previous_lessons = Lesson.objects.filter(
+        course=lesson.course,
+        order__lt=lesson.order
+    ).order_by("order")
+
+    allowed_lessons = set(get_user_lessons(user))
+
+    for prev in previous_lessons:
+        if prev not in allowed_lessons:
+            raise PermissionDenied(
+                f"You do not have access to lesson {prev.order} - {prev.title}."
+            )
+
+        try:
+            completion = UserLessonCompletion.objects.get(user=user, lesson=prev)
+        except UserLessonCompletion.DoesNotExist:
+            raise PermissionDenied(
+                f"You must complete lesson {prev.order} - {prev.title} \
+                    before accessing this one."
+            )
+
+        if completion.created_at:
+            deadline = completion.created_at + timedelta(days=7)
+            now = timezone.now()
+            if now < deadline:
+                waited = timesince(completion.created_at, now)
+                remaining = timesince(now, deadline)
+                raise PermissionDenied(
+                    f"Lesson {prev.order} - {prev.title} is locked. "
+                    f"You completed it {waited} ago. "
+                    f"Please wait {remaining} more to unlock this lesson."
+                )
+
+    return True

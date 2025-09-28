@@ -5,36 +5,25 @@ from .views import (
     CourseBundleViewset,
     CourseViewSet,
     LessonViewSet,
-    SectionViewSet,
-    VideoViewSet,
 )
 
+# Main routers
 router = routers.SimpleRouter(trailing_slash=False)
-
 router.register(r"courses", CourseViewSet, basename="courses")
 router.register(r"course-bundles", CourseBundleViewset, basename="course-bundles")
 
+# Nested routers for courses -> lessons (with section_id in URL, but not a SectionViewSet)
 courses_router = routers.NestedSimpleRouter(router, r"courses", lookup="course")
-courses_router.register(r"sections", SectionViewSet, basename="sections")
+courses_router.register(
+    r"lessons",
+    LessonViewSet,
+    basename="section-lessons"
+)
 
-sections_router = routers.NestedSimpleRouter(courses_router, r"sections", lookup="section")
-sections_router.register(r"lessons", LessonViewSet, basename="lessons")
 
-lesson_router = routers.NestedSimpleRouter(sections_router, r"lessons", lookup="lesson")
-lesson_router.register(r"videos", VideoViewSet, basename="videos")
 
+# Combine all routes
 urlpatterns = [
-    path(r"", include(router.urls)),
-    path(r"", include(courses_router.urls)),
-    path(r"", include(sections_router.urls)),
-    path(r"", include(lesson_router.urls)),
+    path("", include(router.urls)),
+    path("", include(courses_router.urls)),
 ]
-
-# /courses
-# /courses/${id}
-# /courses/${course_id}/lessons
-# /courses/${course_id}/lessons/${lesson_id}
-# /courses/${course_id}/lessons/${lesson_id}/videos
-# /course-bundles/${course_bundle_id}
-# /course-bundles/${course_bundle_id}/courses
-# /course-bundle-select/${course_bundle_choice_id}  # New URL pattern for CourseBundleChoice
