@@ -5,7 +5,7 @@ from app.accounts.models import Instructor
 from app.accounts.serializers import InstructorReadSerializer
 from drf_stripe.models import Subscription
 
-from .models import Course, CourseBundle, Lesson, Section, Video, CourseBundleChoice, UserLessonCompletion, UserCourseProgress
+from .models import Course, CourseBundle, Lesson, Video, CourseBundleChoice, UserLessonCompletion, UserCourseProgress
 
 class CourseWriteSerializer(serializers.ModelSerializer):
     instructors = serializers.PrimaryKeyRelatedField(
@@ -34,8 +34,6 @@ class CourseReadSerializer(serializers.ModelSerializer):
             "description",
             "language",
             "instructors",
-            "created_at",
-            "updated_at",
         ]
 
    
@@ -149,7 +147,7 @@ class CourseBundleReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CourseBundle
-        fields = ["uuid", "name", "description", "courses", "created_at", "updated_at"]
+        fields = ["uuid", "name", "description", "courses"]
 
 
 

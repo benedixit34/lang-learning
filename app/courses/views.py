@@ -1,28 +1,25 @@
-from django.core.files.storage import FileSystemStorage
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.db.models import Subquery
+
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
 
-from app.courses.permissions import CanAccessLesson, IsInstructor, IsSubscribed, CanEnroll
+from app.courses.permissions import CanAccessLesson, CanEnroll
 
 
-from .mixins import SubscriptionMixin
 from .models import (
     Course,
     CourseBundle,
     CourseBundleChoice,
-    SpecialCourseBundle,
     Lesson,
-    Section,
-    UserCourseProgress,
     UserLessonCompletion,
+    SpecialCourseBundle
 )
 from .serializers import (
     CourseBundleChoiceSerializer,
@@ -33,14 +30,8 @@ from .serializers import (
     LessonListReadSerializer,
     LessonRetrieveReadSerializer,
     LessonWriteSerializer,
-    UserCourseProgressSerializer,
     UserLessonCompletionSerializer,
-    VideoReadSerializer,
-    VideoWriteSerializer,
 )
-
-
-from app.courses.utils import get_completed_level
 
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
@@ -103,7 +94,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         elif self.action in ["create", "update", "partial_update", "destroy"]:
             self.permission_classes = [IsAdminUser]
         elif self.action in ["retrieve", "complete_lesson"]:
-            self.permission_classes = [IsAuthenticated, CanAccessLesson, IsSubscribed]
+            self.permission_classes = [IsAuthenticated, CanAccessLesson]
         else:
             self.permission_classes = [IsAdminUser]
         return [perm() for perm in self.permission_classes]
@@ -144,8 +135,11 @@ class LessonViewSet(viewsets.ModelViewSet):
 
 
 class CourseBundleViewset(viewsets.ModelViewSet):
-    queryset = CourseBundle.objects.all()
     lookup_field = "uuid"
+
+    def get_queryset(self):
+        special_bundles = SpecialCourseBundle.objects.values_list("course_bundle_id", flat=True)
+        return CourseBundle.objects.exclude(id__in=Subquery(special_bundles))
 
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -168,8 +162,7 @@ class CourseBundleViewset(viewsets.ModelViewSet):
         serializer = CourseBundleChoiceSerializer(choice, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
                 
-    
-    #check if the user is enrolled
+
     @action(detail=True, methods=['get'], url_path='enrolled')
     def enrolled(self, request, uuid=None):
         course_bundle = self.get_object()

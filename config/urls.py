@@ -14,7 +14,6 @@ urlpatterns = [
     path(f"{API_PREFIX}auth/", include("app.auth.urls")),
     path(f"{API_PREFIX}", include("app.support.urls")),
     path(f"{API_PREFIX}", include("app.courses.urls")),
-    path(f"{API_PREFIX}pay/", include("drf_stripe.urls")),
     ## documentation related endpoints
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     # Optional UI:

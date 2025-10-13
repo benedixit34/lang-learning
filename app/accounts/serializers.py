@@ -39,7 +39,7 @@ class InstructorReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Instructor
-        fields = ("email", "full_name", "profile_picture", "created_at", "updated_at")
+        fields = ("email", "full_name", "profile_picture")
     
     def get_full_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}".strip()

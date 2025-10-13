@@ -3,12 +3,11 @@ import cloudinary.uploader
 
 
 from app.courses.models import Lesson, CourseBundleChoice, \
-    SpecialCourseBundle, UserLessonCompletion, Course, Video, Section
+    SpecialCourseBundle, UserLessonCompletion, Course
 from app.accounts.models import Subscriber
 from app.courses.stripe_payments import get_user_active_subscriptions
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.response import Response
-from rest_framework import status
+
 
 
 from django.utils import timezone
