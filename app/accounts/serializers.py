@@ -20,16 +20,24 @@ class UserWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "referral_code", "password")
+        fields = "__all__"
+    
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User already exists")
+        return value
 
-    def create(self, validated_data):
-        referral_code = validated_data.pop("referral_code", None)
+
+    def validate(self, attrs):
+        referral_code = attrs.get("referral_code")
         if referral_code:
-            try:
-                user = User.objects.get(referral_code=referral_code)
-            except User.DoesNotExist:
-                raise serializers.ValidationError("Invalid referral code.")
+            if not User.objects.filter(referral_code=referral_code):
+                raise serializers.ValidationError("Invalid Referal Code")
+        return attrs
 
+        
+    def create(self, validated_data):
+        validated_data.pop("referral_code", None)
         return User.objects.create_user(**validated_data)
 
 
