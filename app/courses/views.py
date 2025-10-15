@@ -119,7 +119,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         read_serializer = LessonRetrieveReadSerializer(lesson)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
     
-
+    #Add complete Lesson Endpoint
     @action(detail=True, methods=["post"], url_path="completed")
     def complete_lesson(self, request, *args, **kwargs):
         lesson = self.get_object()
