@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from app.accounts.models import Instructor
 from app.accounts.serializers import InstructorReadSerializer
-from drf_stripe.models import Subscription
+
 
 from .models import Course, CourseBundle, Lesson, Video, CourseBundleChoice, UserLessonCompletion, UserCourseProgress
 
@@ -79,8 +79,6 @@ class LessonRetrieveReadSerializer(serializers.ModelSerializer):
             "description",
             "order",
             "video",
-            "created_at",
-            "updated_at",
         ]
 
 class LessonListReadSerializer(serializers.ModelSerializer):
@@ -91,8 +89,6 @@ class LessonListReadSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "order",
-            "created_at",
-            "updated_at",
         ]
 
 
@@ -200,13 +196,6 @@ class UserLessonCompletionSerializer(serializers.ModelSerializer):
         model = UserLessonCompletion
         fields = ['user', 'lesson']
 
-class UserCourseProgressSerializer(serializers.ModelSerializer):
-    user = serializers.ReadOnlyField(source='user.email')
-    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all())
-
-    class Meta:
-        model = UserCourseProgress
-        fields = ['user', 'course', 'completion_level']
 
 
 

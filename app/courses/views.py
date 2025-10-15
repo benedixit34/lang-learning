@@ -116,7 +116,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             order = course.lessons.count() + 1
             serializer.validated_data["order"] = order
             lesson = serializer.save()
-        read_serializer = LessonRetrieveSerializer(lesson)
+        read_serializer = LessonRetrieveReadSerializer(lesson)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
     
 
