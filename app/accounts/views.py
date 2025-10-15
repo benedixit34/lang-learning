@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
+from django.core.mail import send_mail, BadHeaderError
 
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
@@ -27,32 +27,34 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
 
     def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        read_serializer = UserReadSerializer(user)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            read_serializer = UserReadSerializer(user)
 
-        verification = Verification(user=user)
-        raw_code = verification.generate_code()
-        verification.save()
+            verification = Verification(user=user)
+            raw_code = verification.generate_code()
+            verification.save()
 
-        email_content = (
-            f"Welcome to AE Learning \n"
-            f"Here is your verification code: {raw_code}.\n"
-            f"Kindly complete your registration and dive into our world of innovative learning experience."
-        )
-
-        send_mail(
-            "Welcome to AE Learning",
-            email_content,
-            "learn@afroeuropean.uk",
-            [user.email],
-            fail_silently=False,
-        )
-
-        # # offload send email task to celery
-        # send_verification_email.delay(user.email)
-        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+            email_content = (
+                f"Welcome to AE Learning \n"
+                f"Here is your verification code: {raw_code}.\n"
+                f"Kindly complete your registration and dive into our world of innovative learning experience."
+            )
+            try:
+                send_mail(
+                    "Welcome to AE Learning",
+                    email_content,
+                    "learn@afroeuropean.uk",
+                    [user.email],
+                    fail_silently=False,
+                )
+                return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+            except (BadHeaderError, Exception) as e:
+                return Response({"details": e}, status=status.HTTP_502_BAD_GATEWAY)
+        except Exception as e:
+            return Response({"details": e}, status=status.HTTP_500_INTERNAL_ERROR)
 
     def partial_update(self, request, uuid=None):
         if str(request.user.uuid) != uuid:
